@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { computeLine } from "../utils/algorithms";
 
 const algos = [
@@ -21,7 +21,18 @@ export default function Sidebar({
   setLineColor,
   bgColor,
   setBgColor,
+  linePoints,
+  gridMin,
+  gridMax,
+  setGridMin,
+  setGridMax,
+  showLine,
+  setShowLine,
+  showSvgLine,
+  setShowSvgLine,
 }) {
+  const [showPoints, setShowPoints] = useState(false);
+
   const handleGenerate = () => {
     if (!pointA || !pointB) return;
     const pts = computeLine(pointA.x, pointA.y, pointB.x, pointB.y, algo);
@@ -36,7 +47,7 @@ export default function Sidebar({
 
   const updateCoord = (which, axis, val) => {
     const num = parseInt(val, 10);
-    if (Number.isNaN(num) || num < -20 || num > 20) return;
+    if (Number.isNaN(num) || num < gridMin || num > gridMax) return;
     if (which === "A")
       setPointA((prev) => ({ ...(prev || { x: 0, y: 0 }), [axis]: num }));
     else setPointB((prev) => ({ ...(prev || { x: 0, y: 0 }), [axis]: num }));
@@ -47,16 +58,37 @@ export default function Sidebar({
     const setter = which === "A" ? setPointA : setPointB;
     const base = getter || { x: 0, y: 0 };
     let next = base[axis] + delta;
-    if (next < -20) next = -20;
-    if (next > 20) next = 20;
+    if (next < gridMin) next = gridMin;
+    if (next > gridMax) next = gridMax;
     setter({ ...base, [axis]: next });
   };
 
   return (
-    <aside className="w-80 p-4 bg-white border-r">
+    <aside
+      className="w-80 p-4 bg-white shadow-xl rounded-xl border border-gray-200 fixed left-6 top-1/2 -translate-y-1/2 z-20"
+      style={{ maxHeight: "90vh", overflowY: "auto" }}
+    >
       <h2 className="text-lg font-medium mb-4">Options</h2>
 
       <div className="mb-3">
+        <label className="block text-sm font-medium">Grid Range</label>
+        <select
+          value={gridMax}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            setGridMin(-v);
+            setGridMax(v);
+            setPointA(null);
+            setPointB(null);
+            setLinePoints([]);
+          }}
+          className="mt-1 block w-full border rounded p-2 mb-2"
+        >
+          <option value={10}>-10 to 10</option>
+          <option value={20}>-20 to 20</option>
+          <option value={50}>-50 to 50</option>
+          <option value={100}>-100 to 100</option>
+        </select>
         <label className="block text-sm font-medium">Algorithm</label>
         <select
           value={algo}
@@ -158,7 +190,24 @@ export default function Sidebar({
           className="mt-1"
         />
       </div>
-
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={() => setShowLine((v) => !v)}
+          className={`flex-1 p-2 rounded ${
+            showLine ? "bg-green-100" : "bg-gray-100"
+          } border`}
+        >
+          {showLine ? "Hide Rasterized Line" : "Show Rasterized Line"}
+        </button>
+        <button
+          onClick={() => setShowSvgLine((v) => !v)}
+          className={`flex-1 p-2 rounded ${
+            showSvgLine ? "bg-green-100" : "bg-gray-100"
+          } border`}
+        >
+          {showSvgLine ? "Hide SVG Line" : "Show SVG Line"}
+        </button>
+      </div>
       <div className="flex gap-2 mt-4">
         <button
           onClick={handleGenerate}
@@ -172,6 +221,27 @@ export default function Sidebar({
         >
           Reset
         </button>
+      </div>
+
+      <div className="mt-4">
+        <button
+          onClick={() => setShowPoints((v) => !v)}
+          className="w-full bg-gray-100 border p-2 rounded text-sm mb-2"
+        >
+          {showPoints ? "Hide Points" : "Show Points"}
+        </button>
+        {showPoints && (
+          <div className="max-h-40 overflow-auto border rounded p-2 bg-white text-xs">
+            <div className="mb-1 font-semibold">
+              Line Points ({linePoints?.length || 0}):
+            </div>
+            <ol className="list-decimal list-inside">
+              {(linePoints || []).map((p, i) => (
+                <li key={i}>{`(${p.x}, ${p.y})`}</li>
+              ))}
+            </ol>
+          </div>
+        )}
       </div>
     </aside>
   );

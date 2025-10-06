@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { computeLine } from "../utils/algorithms";
 
-const SIZE = 41; // -20..20 inclusive
+// SIZE and range are now dynamic
 
 function coordToIndex(x, y) {
   // map -10..10 to 0..20 indices; origin at center
@@ -18,12 +18,17 @@ export default function Grid({
   algo,
   lineColor,
   bgColor,
+  gridMin,
+  gridMax,
+  showLine,
+  showSvgLine,
 }) {
+  const SIZE = gridMax - gridMin + 1;
   const cells = [];
   for (let row = 0; row < SIZE; row++) {
-    const y = 20 - row;
+    const y = gridMax - row;
     for (let col = 0; col < SIZE; col++) {
-      const x = col - 20;
+      const x = col + gridMin;
       cells.push({ x, y });
     }
   }
@@ -57,6 +62,7 @@ export default function Grid({
     function compute() {
       const sidebarWidth = 320; // tailwind w-80
       const labelCol = 48; // left label column
+      // ...existing code...
       const topRow = 24; // top label row
       const padding = 40; // margins
       const availW = Math.max(
@@ -65,21 +71,21 @@ export default function Grid({
       );
       const availH = Math.max(200, window.innerHeight - topRow - padding - 120); // leave room for header and controls
       const size = Math.floor(
-        Math.max(6, Math.min(availW / SIZE, availH / SIZE))
+        Math.max(3, Math.min(availW / SIZE, availH / SIZE))
       );
       setCellSize(size);
     }
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
-  }, []);
+  }, [gridMin, gridMax]);
 
   const isSelected = (x, y, p) => p && p.x === x && p.y === y;
   const lineSet = new Set(linePoints.map((p) => `${p.x},${p.y}`));
 
   // create arrays for ticks
-  const xs = Array.from({ length: SIZE }, (_, i) => i - 20);
-  const ys = Array.from({ length: SIZE }, (_, i) => 20 - i);
+  const xs = Array.from({ length: SIZE }, (_, i) => i + gridMin);
+  const ys = Array.from({ length: SIZE }, (_, i) => gridMax - i);
 
   const labelWidth = 48;
   const headerHeight = 24;
@@ -88,8 +94,8 @@ export default function Grid({
 
   // helper to map grid coord to pixel center
   const toPixel = (x, y) => {
-    const col = x + 20; // 0..SIZE-1
-    const row = 20 - y; // 0..SIZE-1
+    const col = x - gridMin; // 0..SIZE-1
+    const row = gridMax - y; // 0..SIZE-1
     const cx = labelWidth + col * cellSize + cellSize / 2;
     const cy = headerHeight + row * cellSize + cellSize / 2;
     return { cx, cy };
@@ -99,7 +105,7 @@ export default function Grid({
     <div className="max-w-screen-lg mx-auto">
       <div className="mb-4">
         <h1 className="text-xl font-semibold">
-          2D Coordinate System (-20..20)
+          2D Coordinate System ({gridMin}..{gridMax})
         </h1>
         <p className="text-sm text-gray-600">
           Click two cells to select points A and B.
@@ -114,62 +120,64 @@ export default function Grid({
           style={{ position: "relative", width: gridWidth, height: gridHeight }}
         >
           {/* SVG overlay */}
-          <svg
-            width={gridWidth}
-            height={gridHeight}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              pointerEvents: "none",
-            }}
-          >
-            {/* optionally draw grid lines (light) */}
-            <defs>
-              <style>{`.grid-line{stroke:#e5e7eb; stroke-width:1}`}</style>
-            </defs>
-            {/* vertical lines */}
-            {Array.from({ length: SIZE + 1 }).map((_, i) => (
-              <line
-                key={`v-${i}`}
-                x1={labelWidth + i * cellSize}
-                y1={headerHeight}
-                x2={labelWidth + i * cellSize}
-                y2={gridHeight}
-                className="grid-line"
-              />
-            ))}
-            {/* horizontal lines */}
-            {Array.from({ length: SIZE + 1 }).map((_, i) => (
-              <line
-                key={`h-${i}`}
-                x1={labelWidth}
-                y1={headerHeight + i * cellSize}
-                x2={gridWidth}
-                y2={headerHeight + i * cellSize}
-                className="grid-line"
-              />
-            ))}
-            {/* exact mathematical line overlay */}
-            {pointA &&
-              pointB &&
-              (() => {
-                const p0 = toPixel(pointA.x, pointA.y);
-                const p1 = toPixel(pointB.x, pointB.y);
-                return (
-                  <line
-                    x1={p0.cx}
-                    y1={p0.cy}
-                    x2={p1.cx}
-                    y2={p1.cy}
-                    stroke={lineColor}
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    opacity={0.9}
-                  />
-                );
-              })()}
-          </svg>
+          {showSvgLine && (
+            <svg
+              width={gridWidth}
+              height={gridHeight}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                pointerEvents: "none",
+              }}
+            >
+              {/* optionally draw grid lines (light) */}
+              <defs>
+                <style>{`.grid-line{stroke:#e5e7eb; stroke-width:1}`}</style>
+              </defs>
+              {/* vertical lines */}
+              {Array.from({ length: SIZE + 1 }).map((_, i) => (
+                <line
+                  key={`v-${i}`}
+                  x1={labelWidth + i * cellSize}
+                  y1={headerHeight}
+                  x2={labelWidth + i * cellSize}
+                  y2={gridHeight}
+                  className="grid-line"
+                />
+              ))}
+              {/* horizontal lines */}
+              {Array.from({ length: SIZE + 1 }).map((_, i) => (
+                <line
+                  key={`h-${i}`}
+                  x1={labelWidth}
+                  y1={headerHeight + i * cellSize}
+                  x2={gridWidth}
+                  y2={headerHeight + i * cellSize}
+                  className="grid-line"
+                />
+              ))}
+              {/* exact mathematical line overlay */}
+              {pointA &&
+                pointB &&
+                (() => {
+                  const p0 = toPixel(pointA.x, pointA.y);
+                  const p1 = toPixel(pointB.x, pointB.y);
+                  return (
+                    <line
+                      x1={p0.cx}
+                      y1={p0.cy}
+                      x2={p1.cx}
+                      y2={p1.cy}
+                      stroke={lineColor}
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      opacity={0.9}
+                    />
+                  );
+                })()}
+            </svg>
+          )}
 
           <div
             style={{
@@ -187,7 +195,7 @@ export default function Grid({
                 className="flex items-center justify-center text-[10px] border-b"
                 style={{ height: headerHeight }}
               >
-                {x}
+                {x % 5 === 0 ? x : ""}
               </div>
             ))}
 
@@ -198,13 +206,15 @@ export default function Grid({
                   className="flex items-center justify-center text-[10px] border-r"
                   style={{ width: labelWidth }}
                 >
-                  {y}
+                  {y % 5 === 0 ? y : ""}
                 </div>
                 {xs.map((x) => {
                   const key = `${x},${y}`;
                   const selectedA = isSelected(x, y, pointA);
                   const selectedB = isSelected(x, y, pointB);
                   const onLine = lineSet.has(key);
+                  // Only show colored rasterized line if showLine is true
+                  const showCellLine = showLine && onLine;
                   return (
                     <div
                       key={key}
@@ -218,7 +228,7 @@ export default function Grid({
                           ? "#a7f3d0"
                           : selectedB
                           ? "#bfdbfe"
-                          : onLine
+                          : showCellLine
                           ? lineColor
                           : undefined,
                       }}
