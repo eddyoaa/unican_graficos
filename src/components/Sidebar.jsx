@@ -42,6 +42,16 @@ export default function Sidebar({
     else setPointB((prev) => ({ ...(prev || { x: 0, y: 0 }), [axis]: num }));
   };
 
+  const stepCoord = (which, axis, delta) => {
+    const getter = which === "A" ? pointA : pointB;
+    const setter = which === "A" ? setPointA : setPointB;
+    const base = getter || { x: 0, y: 0 };
+    let next = base[axis] + delta;
+    if (next < -20) next = -20;
+    if (next > 20) next = 20;
+    setter({ ...base, [axis]: next });
+  };
+
   return (
     <aside className="w-80 p-4 bg-white border-r">
       <h2 className="text-lg font-medium mb-4">Options</h2>
@@ -64,36 +74,68 @@ export default function Sidebar({
       <div className="mb-3">
         <label className="block text-sm font-medium">Point A (x,y)</label>
         <div className="flex gap-2 mt-1">
-          <input
-            value={pointA ? pointA.x : ""}
-            onChange={(e) => updateCoord("A", "x", e.target.value)}
-            className="border p-2 w-1/2"
-            placeholder="-20..20"
-          />
-          <input
-            value={pointA ? pointA.y : ""}
-            onChange={(e) => updateCoord("A", "y", e.target.value)}
-            className="border p-2 w-1/2"
-            placeholder="-20..20"
-          />
+          <div className="flex items-center border rounded">
+            <button onClick={() => stepCoord("A", "x", -1)} className="px-2">
+              -
+            </button>
+            <input
+              type="number"
+              value={pointA ? pointA.x : 0}
+              onChange={(e) => updateCoord("A", "x", e.target.value)}
+              className="w-16 text-center"
+            />
+            <button onClick={() => stepCoord("A", "x", 1)} className="px-2">
+              +
+            </button>
+          </div>
+          <div className="flex items-center border rounded">
+            <button onClick={() => stepCoord("A", "y", -1)} className="px-2">
+              -
+            </button>
+            <input
+              type="number"
+              value={pointA ? pointA.y : 0}
+              onChange={(e) => updateCoord("A", "y", e.target.value)}
+              className="w-16 text-center"
+            />
+            <button onClick={() => stepCoord("A", "y", 1)} className="px-2">
+              +
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="mb-3">
         <label className="block text-sm font-medium">Point B (x,y)</label>
         <div className="flex gap-2 mt-1">
-          <input
-            value={pointB ? pointB.x : ""}
-            onChange={(e) => updateCoord("B", "x", e.target.value)}
-            className="border p-2 w-1/2"
-            placeholder="-20..20"
-          />
-          <input
-            value={pointB ? pointB.y : ""}
-            onChange={(e) => updateCoord("B", "y", e.target.value)}
-            className="border p-2 w-1/2"
-            placeholder="-20..20"
-          />
+          <div className="flex items-center border rounded">
+            <button onClick={() => stepCoord("B", "x", -1)} className="px-2">
+              -
+            </button>
+            <input
+              type="number"
+              value={pointB ? pointB.x : 0}
+              onChange={(e) => updateCoord("B", "x", e.target.value)}
+              className="w-16 text-center"
+            />
+            <button onClick={() => stepCoord("B", "x", 1)} className="px-2">
+              +
+            </button>
+          </div>
+          <div className="flex items-center border rounded">
+            <button onClick={() => stepCoord("B", "y", -1)} className="px-2">
+              -
+            </button>
+            <input
+              type="number"
+              value={pointB ? pointB.y : 0}
+              onChange={(e) => updateCoord("B", "y", e.target.value)}
+              className="w-16 text-center"
+            />
+            <button onClick={() => stepCoord("B", "y", 1)} className="px-2">
+              +
+            </button>
+          </div>
         </div>
       </div>
 

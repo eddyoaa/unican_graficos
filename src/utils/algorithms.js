@@ -18,19 +18,34 @@ export function computeLine(x0, y0, x1, y1, algo) {
 
 function slopeBasic(x0, y0, x1, y1) {
   const pts = [];
-  if (x0 === x1) {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  if (dx === 0 && dy === 0) return [{ x: x0, y: y0 }];
+  // iterate over dominant axis to avoid holes
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const m = dx === 0 ? 0 : dy / dx;
+    const b = y0 - m * x0;
+    const [xmin, xmax] = x0 < x1 ? [x0, x1] : [x1, x0];
+    for (let x = xmin; x <= xmax; x++) {
+      const y = Math.round(m * x + b);
+      pts.push({ x, y });
+    }
+  } else {
+    const mInv = dy === 0 ? 0 : dx / dy;
     const [ymin, ymax] = y0 < y1 ? [y0, y1] : [y1, y0];
-    for (let y = ymin; y <= ymax; y++) pts.push({ x: x0, y });
-    return pts;
+    for (let y = ymin; y <= ymax; y++) {
+      const x = Math.round(x0 + mInv * (y - y0));
+      pts.push({ x, y });
+    }
   }
-  const m = (y1 - y0) / (x1 - x0);
-  const b = y0 - m * x0;
-  const [xmin, xmax] = x0 < x1 ? [x0, x1] : [x1, x0];
-  for (let x = xmin; x <= xmax; x++) {
-    const y = Math.round(m * x + b);
-    pts.push({ x, y });
-  }
-  return pts;
+  // remove duplicates while preserving order
+  const seen = new Set();
+  return pts.filter((p) => {
+    const k = `${p.x},${p.y}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 function slopeModified(x0, y0, x1, y1) {

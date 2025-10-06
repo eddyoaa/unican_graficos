@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { computeLine } from "../utils/algorithms";
 
 const SIZE = 41; // -20..20 inclusive
@@ -51,14 +51,55 @@ export default function Grid({
     }
   }, [pointA, pointB, algo, setLinePoints]);
 
+  // dynamic sizing so the whole grid fits without scrolling
+  const [cellSize, setCellSize] = useState(24);
+  useEffect(() => {
+    function compute() {
+      const sidebarWidth = 320; // tailwind w-80
+      const labelCol = 48; // left label column
+      const topRow = 24; // top label row
+      const padding = 40; // margins
+      const availW = Math.max(
+        200,
+        window.innerWidth - sidebarWidth - labelCol - padding
+      );
+      const availH = Math.max(200, window.innerHeight - topRow - padding - 120); // leave room for header and controls
+      const size = Math.floor(
+        Math.max(6, Math.min(availW / SIZE, availH / SIZE))
+      );
+      setCellSize(size);
+    }
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+
   const isSelected = (x, y, p) => p && p.x === x && p.y === y;
   const lineSet = new Set(linePoints.map((p) => `${p.x},${p.y}`));
+
+  // create arrays for ticks
+  const xs = Array.from({ length: SIZE }, (_, i) => i - 20);
+  const ys = Array.from({ length: SIZE }, (_, i) => 20 - i);
+
+  const labelWidth = 48;
+  const headerHeight = 24;
+  const gridWidth = labelWidth + SIZE * cellSize;
+  const gridHeight = headerHeight + SIZE * cellSize;
+
+  // helper to map grid coord to pixel center
+  const toPixel = (x, y) => {
+    const col = x + 20; // 0..SIZE-1
+    const row = 20 - y; // 0..SIZE-1
+    const cx = labelWidth + col * cellSize + cellSize / 2;
+    const cy = headerHeight + row * cellSize + cellSize / 2;
+    return { cx, cy };
+  };
 
   return (
     <div className="max-w-screen-lg mx-auto">
       <div className="mb-4">
         <h1 className="text-xl font-semibold">
-          2D Coordinate System (-10..10)
+          2D Coordinate System (-20..20)
         </h1>
         <p className="text-sm text-gray-600">
           Click two cells to select points A and B.
@@ -66,36 +107,132 @@ export default function Grid({
       </div>
 
       <div
-        className="grid border overflow-auto"
-        style={{ background: bgColor, gridTemplateColumns: `repeat(${SIZE}, 1.5rem)` }}
+        className="border"
+        style={{ background: bgColor, width: gridWidth, height: gridHeight }}
       >
-        {cells.map(({ x, y }) => {
-          const key = `${x},${y}`;
-          const selectedA = isSelected(x, y, pointA);
-          const selectedB = isSelected(x, y, pointB);
-          const onLine = lineSet.has(key);
-          return (
-            <div
-              key={key}
-              onClick={() => handleClick(x, y)}
-              className={`w-5 h-5 border border-gray-200 flex items-center justify-center text-[9px] cursor-pointer select-none`}
-              title={`(${x}, ${y})`}
-              style={{
-                background: selectedA
-                  ? "#a7f3d0"
-                  : selectedB
-                  ? "#bfdbfe"
-                  : onLine
-                  ? lineColor
-                  : undefined,
-              }}
-            >
-              <div className="text-gray-700">
-                {x === 0 && y === 0 ? "O" : ""}
+        <div
+          style={{ position: "relative", width: gridWidth, height: gridHeight }}
+        >
+          {/* SVG overlay */}
+          <svg
+            width={gridWidth}
+            height={gridHeight}
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              pointerEvents: "none",
+            }}
+          >
+            {/* optionally draw grid lines (light) */}
+            <defs>
+              <style>{`.grid-line{stroke:#e5e7eb; stroke-width:1}`}</style>
+            </defs>
+            {/* vertical lines */}
+            {Array.from({ length: SIZE + 1 }).map((_, i) => (
+              <line
+                key={`v-${i}`}
+                x1={labelWidth + i * cellSize}
+                y1={headerHeight}
+                x2={labelWidth + i * cellSize}
+                y2={gridHeight}
+                className="grid-line"
+              />
+            ))}
+            {/* horizontal lines */}
+            {Array.from({ length: SIZE + 1 }).map((_, i) => (
+              <line
+                key={`h-${i}`}
+                x1={labelWidth}
+                y1={headerHeight + i * cellSize}
+                x2={gridWidth}
+                y2={headerHeight + i * cellSize}
+                className="grid-line"
+              />
+            ))}
+            {/* exact mathematical line overlay */}
+            {pointA &&
+              pointB &&
+              (() => {
+                const p0 = toPixel(pointA.x, pointA.y);
+                const p1 = toPixel(pointB.x, pointB.y);
+                return (
+                  <line
+                    x1={p0.cx}
+                    y1={p0.cy}
+                    x2={p1.cx}
+                    y2={p1.cy}
+                    stroke={lineColor}
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    opacity={0.9}
+                  />
+                );
+              })()}
+          </svg>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `${labelWidth}px repeat(${SIZE}, ${cellSize}px)`,
+              gridTemplateRows: `${headerHeight}px repeat(${SIZE}, ${cellSize}px)`,
+            }}
+          >
+            {/* top-left empty cell */}
+            <div style={{ width: labelWidth, height: headerHeight }} />
+            {/* x labels */}
+            {xs.map((x) => (
+              <div
+                key={`xl-${x}`}
+                className="flex items-center justify-center text-[10px] border-b"
+                style={{ height: headerHeight }}
+              >
+                {x}
               </div>
-            </div>
-          );
-        })}
+            ))}
+
+            {/* rows with y label + cells */}
+            {ys.map((y) => (
+              <React.Fragment key={`row-${y}`}>
+                <div
+                  className="flex items-center justify-center text-[10px] border-r"
+                  style={{ width: labelWidth }}
+                >
+                  {y}
+                </div>
+                {xs.map((x) => {
+                  const key = `${x},${y}`;
+                  const selectedA = isSelected(x, y, pointA);
+                  const selectedB = isSelected(x, y, pointB);
+                  const onLine = lineSet.has(key);
+                  return (
+                    <div
+                      key={key}
+                      onClick={() => handleClick(x, y)}
+                      className={`border border-gray-200 flex items-center justify-center text-[9px] cursor-pointer select-none`}
+                      title={`(${x}, ${y})`}
+                      style={{
+                        width: cellSize,
+                        height: cellSize,
+                        background: selectedA
+                          ? "#a7f3d0"
+                          : selectedB
+                          ? "#bfdbfe"
+                          : onLine
+                          ? lineColor
+                          : undefined,
+                      }}
+                    >
+                      <div className="text-gray-700">
+                        {x === 0 && y === 0 ? "O" : ""}
+                      </div>
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
