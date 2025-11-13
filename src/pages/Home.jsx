@@ -11,7 +11,6 @@ export default function Home() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Line Algorithms Card */}
           <Link
             to="/lines"
             className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 p-8 border-2 border-transparent hover:border-blue-500"
@@ -37,8 +36,6 @@ export default function Home() {
               </h2>
             </div>
           </Link>
-
-          {/* 2D Algorithms Card */}
           <Link
             to="/2d"
             className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 p-8 border-2 border-transparent hover:border-indigo-500"
