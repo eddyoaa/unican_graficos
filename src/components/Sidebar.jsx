@@ -1,12 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { computeLine } from "../utils/algorithms";
 
 const algos = [
-  { value: "slope-basic", label: "Slope Intercept básico" },
-  { value: "slope-mod", label: "Slope Intercept modificado" },
+  { value: "slope-intercept", label: "Slope Intercept" },
   { value: "dda", label: "Algoritmo DDA" },
-  { value: "bresenham-float", label: "Bresenham (aritmética real)" },
-  { value: "bresenham-int", label: "Bresenham (aritmética entera)" },
+  { value: "bresenham", label: "Bresenham" },
 ];
 
 export default function Sidebar({
@@ -65,8 +63,8 @@ export default function Sidebar({
 
   return (
     <aside
-      className="w-80 p-4 bg-white shadow-xl rounded-xl border border-gray-200 fixed left-6 top-1/2 -translate-y-1/2 z-20"
-      style={{ maxHeight: "90vh", overflowY: "auto" }}
+      className="w-80 p-4 bg-white shadow border-r border-gray-200"
+      style={{ minHeight: "100vh", overflowY: "auto" }}
     >
       <h2 className="text-lg font-medium mb-4">Options</h2>
 

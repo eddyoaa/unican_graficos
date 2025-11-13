@@ -6,7 +6,7 @@ export default function App() {
   const [pointA, setPointA] = useState(null);
   const [pointB, setPointB] = useState(null);
   const [linePoints, setLinePoints] = useState([]);
-  const [algo, setAlgo] = useState("slope-basic");
+  const [algo, setAlgo] = useState("slope-intercept");
   const [lineColor, setLineColor] = useState("#ff0000");
   const [bgColor, setBgColor] = useState("#ffffff");
   // grid range state

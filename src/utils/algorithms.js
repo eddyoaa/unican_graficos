@@ -1,73 +1,79 @@
 // Returns array of {x,y} points on integer grid between (x0,y0) and (x1,y1)
 export function computeLine(x0, y0, x1, y1, algo) {
   switch (algo) {
-    case "slope-basic":
-      return slopeBasic(x0, y0, x1, y1);
-    case "slope-mod":
-      return slopeModified(x0, y0, x1, y1);
+    case "slope-intercept":
+      return slopeIntercept(x0, y0, x1, y1);
     case "dda":
       return dda(x0, y0, x1, y1);
-    case "bresenham-float":
-      return bresenhamFloat(x0, y0, x1, y1);
-    case "bresenham-int":
-      return bresenhamInt(x0, y0, x1, y1);
+    case "bresenham":
+      return bresenham(x0, y0, x1, y1);
     default:
       return [];
   }
 }
 
-function slopeBasic(x0, y0, x1, y1) {
+function slopeIntercept(x0, y0, x1, y1) {
   const pts = [];
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  if (dx === 0 && dy === 0) return [{ x: x0, y: y0 }];
-  // iterate over dominant axis to avoid holes
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    const m = dx === 0 ? 0 : dy / dx;
-    const b = y0 - m * x0;
-    const [xmin, xmax] = x0 < x1 ? [x0, x1] : [x1, x0];
-    for (let x = xmin; x <= xmax; x++) {
-      const y = Math.round(m * x + b);
-      pts.push({ x, y });
-    }
-  } else {
-    const mInv = dy === 0 ? 0 : dx / dy;
-    const [ymin, ymax] = y0 < y1 ? [y0, y1] : [y1, y0];
-    for (let y = ymin; y <= ymax; y++) {
-      const x = Math.round(x0 + mInv * (y - y0));
-      pts.push({ x, y });
-    }
-  }
-  // remove duplicates while preserving order
-  const seen = new Set();
-  return pts.filter((p) => {
-    const k = `${p.x},${p.y}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-}
+  let x1_orig = x0,
+    y1_orig = y0,
+    x2_orig = x1,
+    y2_orig = y1;
 
-function slopeModified(x0, y0, x1, y1) {
-  // iterate over the dominant axis
-  const pts = [];
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    const m = dx === 0 ? 0 : dy / dx;
-    const [xmin, xmax] = x0 < x1 ? [x0, x1] : [x1, x0];
-    for (let x = xmin; x <= xmax; x++) {
-      const y = Math.round(y0 + m * (x - x0));
+  // Extra modification: if line goes to the left, swap points so it always goes right
+  if (x2_orig < x1_orig) {
+    [x1_orig, y1_orig, x2_orig, y2_orig] = [x2_orig, y2_orig, x1_orig, y1_orig];
+  }
+
+  let x = x1_orig;
+  let y = y1_orig;
+  const dx = x2_orig - x1_orig;
+  const dy = y2_orig - y1_orig;
+
+  // Mod1: y1=y2, therefore m=0 (horizontal line)
+  if (dy === 0) {
+    while (x <= x2_orig) {
       pts.push({ x, y });
+      x = x + 1;
+    }
+    return pts;
+  }
+
+  // Mod2: x2=x1 => m=infinity (vertical line)
+  if (dx === 0) {
+    const [ymin, ymax] =
+      y1_orig < y2_orig ? [y1_orig, y2_orig] : [y2_orig, y1_orig];
+    for (let yy = ymin; yy <= ymax; yy++) {
+      pts.push({ x: x1_orig, y: yy });
+    }
+    return pts;
+  }
+
+  let m = dy / dx;
+  const b = y1_orig - m * x1_orig;
+
+  // Mod3: if m > 1, swap x and y, and change slope to 1/m
+  if (Math.abs(m) > 1) {
+    [x, y] = [y, x];
+    m = 1 / m;
+    const [ymin, ymax] =
+      y1_orig < y2_orig ? [y1_orig, y2_orig] : [y2_orig, y1_orig];
+
+    // Iterate over y (which is now in the x role)
+    let yy = ymin;
+    while (yy <= ymax) {
+      const xx = Math.round(m * yy + (x1_orig - m * y1_orig));
+      pts.push({ x: xx, y: yy });
+      yy = yy + 1;
     }
   } else {
-    const mInv = dy === 0 ? 0 : dx / dy;
-    const [ymin, ymax] = y0 < y1 ? [y0, y1] : [y1, y0];
-    for (let y = ymin; y <= ymax; y++) {
-      const x = Math.round(x0 + mInv * (y - y0));
+    // Normal case: iterate over x
+    while (x <= x2_orig) {
+      y = Math.round(m * x + b);
       pts.push({ x, y });
+      x = x + 1;
     }
   }
+
   return pts;
 }
 
@@ -75,89 +81,79 @@ function dda(x0, y0, x1, y1) {
   const pts = [];
   const dx = x1 - x0;
   const dy = y1 - y0;
-  const steps = Math.max(Math.abs(dx), Math.abs(dy));
-  if (steps === 0) {
+  const M = Math.max(Math.abs(dx), Math.abs(dy));
+
+  if (M === 0) {
     // same point
     pts.push({ x: x0, y: y0 });
     return pts;
   }
-  const xInc = dx / steps;
-  const yInc = dy / steps;
-  let x = x0;
-  let y = y0;
-  for (let i = 0; i <= steps; i++) {
-    pts.push({ x: Math.round(x), y: Math.round(y) });
-    x += xInc;
-    y += yInc;
+
+  const dxPrime = dx / M;
+  const dyPrime = dy / M;
+  let x = x0 + 0.5;
+  let y = y0 + 0.5;
+  let i = 0;
+
+  while (i <= M) {
+    pts.push({ x: Math.floor(x), y: Math.floor(y) });
+    x = x + dxPrime;
+    y = y + dyPrime;
+    i = i + 1;
   }
+
   return pts;
 }
 
-function bresenhamFloat(x0, y0, x1, y1) {
-  // Bresenham-like algorithm using floating-point slope accumulation
-  // This version uses float stepping over the dominant axis and
-  // rounds the secondary coordinate. It differs from the integer-only
-  // variant which uses integer error arithmetic.
+function bresenham(x0, y0, x1, y1) {
   const pts = [];
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  const absDx = Math.abs(dx);
-  const absDy = Math.abs(dy);
-  const sx = dx === 0 ? 0 : dx > 0 ? 1 : -1;
-  const sy = dy === 0 ? 0 : dy > 0 ? 1 : -1;
 
-  if (absDx === 0 && absDy === 0) {
-    pts.push({ x: x0, y: y0 });
-    return pts;
-  }
-
-  if (absDx >= absDy) {
-    // iterate over x with float y
-    const m = dx === 0 ? 0 : dy / dx; // slope
-    let x = x0;
-    let y = y0;
-    while (true) {
-      pts.push({ x, y: Math.round(y) });
-      if (x === x1) break;
-      x += sx;
-      y += m * sx;
-    }
-  } else {
-    // iterate over y with float x
-    const mInv = dy === 0 ? 0 : dx / dy;
-    let x = x0;
-    let y = y0;
-    while (true) {
-      pts.push({ x: Math.round(x), y });
-      if (y === y1) break;
-      y += sy;
-      x += mInv * sy;
-    }
-  }
-  return pts;
-}
-
-function bresenhamInt(x0, y0, x1, y1) {
-  const pts = [];
+  // Modification 2.1: Use absolute values
   let dx = Math.abs(x1 - x0);
   let dy = Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
-  let err = dx - dy;
+
+  // Modification 2.2: Use sign function
+  const s1 = x1 - x0 === 0 ? 0 : x1 - x0 > 0 ? 1 : -1; // sgn(xf-x1)
+  const s2 = y1 - y0 === 0 ? 0 : y1 - y0 > 0 ? 1 : -1; // sgn(yf-y1)
+
+  // Modification 2.3: Handle all octants
+  let interchange = false;
+  if (dy > dx) {
+    // Swap dx and dy for steep lines
+    [dx, dy] = [dy, dx];
+    interchange = true;
+  }
+
+  // Integer arithmetic modification: ne = 2*dy - dx
+  let ne = 2 * dy - dx;
+
   let x = x0;
   let y = y0;
-  while (true) {
+  let i = 0;
+
+  while (i <= dx) {
     pts.push({ x, y });
-    if (x === x1 && y === y1) break;
-    const e2 = err * 2;
-    if (e2 > -dy) {
-      err -= dy;
-      x += sx;
+
+    // When ne > 0
+    while (ne > 0) {
+      if (interchange) {
+        x = x + s1; // update x when steep
+      } else {
+        y = y + s2; // update y when not steep
+      }
+      ne = ne - 2 * dx; // compensate ne
     }
-    if (e2 < dx) {
-      err += dx;
-      y += sy;
+
+    // Update coordinates
+    if (interchange) {
+      y = y + s2; // update y when steep
+    } else {
+      x = x + s1; // update x when not steep
     }
+
+    ne = ne + 2 * dy; // update ne
+    i = i + 1;
   }
+
   return pts;
 }

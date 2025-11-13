@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { computeLine } from "../utils/algorithms";
 
-// SIZE and range are now dynamic
-
-function coordToIndex(x, y) {
-  // map -10..10 to 0..20 indices; origin at center
-  return { ix: x + 10, iy: 10 - y };
-}
-
 export default function Grid({
   pointA,
   pointB,
@@ -58,18 +51,19 @@ export default function Grid({
 
   // dynamic sizing so the whole grid fits without scrolling
   const [cellSize, setCellSize] = useState(24);
+  const [zoom, setZoom] = useState(1);
+
   useEffect(() => {
     function compute() {
-      const sidebarWidth = 320; // tailwind w-80
-      const labelCol = 48; // left label column
-      // ...existing code...
-      const topRow = 24; // top label row
-      const padding = 40; // margins
+      const sidebarWidth = 320;
+      const labelCol = 48;
+      const topRow = 24;
+      const padding = 40;
       const availW = Math.max(
         200,
         window.innerWidth - sidebarWidth - labelCol - padding
       );
-      const availH = Math.max(200, window.innerHeight - topRow - padding - 120); // leave room for header and controls
+      const availH = Math.max(200, window.innerHeight - topRow - padding - 120);
       const size = Math.floor(
         Math.max(3, Math.min(availW / SIZE, availH / SIZE))
       );
@@ -80,6 +74,12 @@ export default function Grid({
     return () => window.removeEventListener("resize", compute);
   }, [gridMin, gridMax]);
 
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoom((prev) => Math.max(0.5, Math.min(3, prev + delta)));
+  };
+
   const isSelected = (x, y, p) => p && p.x === x && p.y === y;
   const lineSet = new Set(linePoints.map((p) => `${p.x},${p.y}`));
 
@@ -89,35 +89,46 @@ export default function Grid({
 
   const labelWidth = 48;
   const headerHeight = 24;
-  const gridWidth = labelWidth + SIZE * cellSize;
-  const gridHeight = headerHeight + SIZE * cellSize;
+  const effectiveCellSize = cellSize * zoom;
+  const gridWidth = labelWidth + SIZE * effectiveCellSize;
+  const gridHeight = headerHeight + SIZE * effectiveCellSize;
 
   // helper to map grid coord to pixel center
   const toPixel = (x, y) => {
-    const col = x - gridMin; // 0..SIZE-1
-    const row = gridMax - y; // 0..SIZE-1
-    const cx = labelWidth + col * cellSize + cellSize / 2;
-    const cy = headerHeight + row * cellSize + cellSize / 2;
+    const col = x - gridMin;
+    const row = gridMax - y;
+    const cx = labelWidth + col * effectiveCellSize + effectiveCellSize / 2;
+    const cy = headerHeight + row * effectiveCellSize + effectiveCellSize / 2;
     return { cx, cy };
   };
 
   return (
-    <div className="max-w-screen-lg mx-auto">
+    <div className="max-w-screen-lg mx-auto flex flex-col justify-center p-12">
       <div className="mb-4">
         <h1 className="text-xl font-semibold">
           2D Coordinate System ({gridMin}..{gridMax})
         </h1>
         <p className="text-sm text-gray-600">
-          Click two cells to select points A and B.
+          Click two cells to select points A and B. Use mouse wheel to zoom.
         </p>
       </div>
 
       <div
-        className="border"
-        style={{ background: bgColor, width: gridWidth, height: gridHeight }}
+        className="p-4 border overflow-auto"
+        style={{
+          background: bgColor,
+          maxWidth: "100%",
+          maxHeight: "80vh",
+        }}
+        onWheel={handleWheel}
       >
         <div
-          style={{ position: "relative", width: gridWidth, height: gridHeight }}
+          style={{
+            position: "relative",
+            width: gridWidth,
+            height: gridHeight,
+            margin: "0 auto",
+          }}
         >
           {/* SVG overlay */}
           {showSvgLine && (
@@ -139,9 +150,9 @@ export default function Grid({
               {Array.from({ length: SIZE + 1 }).map((_, i) => (
                 <line
                   key={`v-${i}`}
-                  x1={labelWidth + i * cellSize}
+                  x1={labelWidth + i * effectiveCellSize}
                   y1={headerHeight}
-                  x2={labelWidth + i * cellSize}
+                  x2={labelWidth + i * effectiveCellSize}
                   y2={gridHeight}
                   className="grid-line"
                 />
@@ -151,9 +162,9 @@ export default function Grid({
                 <line
                   key={`h-${i}`}
                   x1={labelWidth}
-                  y1={headerHeight + i * cellSize}
+                  y1={headerHeight + i * effectiveCellSize}
                   x2={gridWidth}
-                  y2={headerHeight + i * cellSize}
+                  y2={headerHeight + i * effectiveCellSize}
                   className="grid-line"
                 />
               ))}
@@ -178,17 +189,15 @@ export default function Grid({
                 })()}
             </svg>
           )}
-
+          {/* grid */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `${labelWidth}px repeat(${SIZE}, ${cellSize}px)`,
-              gridTemplateRows: `${headerHeight}px repeat(${SIZE}, ${cellSize}px)`,
+              gridTemplateColumns: `${labelWidth}px repeat(${SIZE}, ${effectiveCellSize}px)`,
+              gridTemplateRows: `${headerHeight}px repeat(${SIZE}, ${effectiveCellSize}px)`,
             }}
           >
-            {/* top-left empty cell */}
             <div style={{ width: labelWidth, height: headerHeight }} />
-            {/* x labels */}
             {xs.map((x) => (
               <div
                 key={`xl-${x}`}
@@ -198,8 +207,6 @@ export default function Grid({
                 {x % 5 === 0 ? x : ""}
               </div>
             ))}
-
-            {/* rows with y label + cells */}
             {ys.map((y) => (
               <React.Fragment key={`row-${y}`}>
                 <div
@@ -222,8 +229,8 @@ export default function Grid({
                       className={`border border-gray-200 flex items-center justify-center text-[9px] cursor-pointer select-none`}
                       title={`(${x}, ${y})`}
                       style={{
-                        width: cellSize,
-                        height: cellSize,
+                        width: effectiveCellSize,
+                        height: effectiveCellSize,
                         background: selectedA
                           ? "#a7f3d0"
                           : selectedB
