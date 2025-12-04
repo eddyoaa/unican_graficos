@@ -8,7 +8,7 @@ import {
 } from "../utils/transformations";
 
 export default function TwoDPage() {
-  // Transformation parameters
+  // Current transformation parameters (for UI controls)
   const [dx, setDx] = useState(0);
   const [dy, setDy] = useState(0);
   const [angle, setAngle] = useState(0);
@@ -19,12 +19,28 @@ export default function TwoDPage() {
   const [shy, setShy] = useState(0);
   const [reflectionM, setReflectionM] = useState(1);
   const [reflectionT, setReflectionT] = useState(0);
-  const [reflectionEnabled, setReflectionEnabled] = useState(false);
+
+  // Applied transformations (accumulated)
+  const [appliedMatrix, setAppliedMatrix] = useState([
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ]);
+  const [transformationHistory, setTransformationHistory] = useState([]);
+
+  // Animation state
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationProgress, setAnimationProgress] = useState(0);
+  const [startCorners, setStartCorners] = useState(null);
+  const [targetCorners, setTargetCorners] = useState(null);
 
   // Canvas settings
   const [canvasSize, setCanvasSize] = useState(400);
   const [lineColor, setLineColor] = useState("#3b82f6");
   const [bgColor, setBgColor] = useState("#ffffff");
+
+  // Reflection line display
+  const [reflectionLine, setReflectionLine] = useState(null);
 
   // Original parallelogram corners (centered)
   const originalCorners = [
@@ -34,22 +50,177 @@ export default function TwoDPage() {
     { x: -30, y: 30 },
   ];
 
-  const matrix = getTransformationMatrix({
-    dx,
-    dy,
-    angle,
-    ccw,
-    sx,
-    sy,
-    shx,
-    shy,
-    reflectionEnabled,
-    reflectionM,
-    reflectionT,
-  });
+  const multiplyMatrices = (a, b) => {
+    const result = [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ];
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        for (let k = 0; k < 3; k++) {
+          result[i][j] += a[i][k] * b[k][j];
+        }
+      }
+    }
+    return result;
+  };
+
+  const animateTransformation = (newMatrix) => {
+    const currentCorners = transformCorners(originalCorners, appliedMatrix);
+    const newCorners = transformCorners(originalCorners, newMatrix);
+    
+    setStartCorners(currentCorners);
+    setTargetCorners(newCorners);
+    setIsAnimating(true);
+    setAnimationProgress(0);
+    
+    // Animation will complete after the effect runs
+    setTimeout(() => {
+      setAppliedMatrix(newMatrix);
+      setIsAnimating(false);
+    }, 500); // 500ms animation duration
+  };
+
+  const applyTranslation = () => {
+    const translationMatrix = getTransformationMatrix({
+      dx,
+      dy,
+      angle: 0,
+      ccw: true,
+      sx: 1,
+      sy: 1,
+      shx: 0,
+      shy: 0,
+      reflectionEnabled: false,
+    });
+    const newMatrix = multiplyMatrices(appliedMatrix, translationMatrix);
+    animateTransformation(newMatrix);
+    setTransformationHistory((prev) => [
+      ...prev,
+      `Translation: (${dx}, ${dy})`,
+    ]);
+    setDx(0);
+    setDy(0);
+  };
+
+  const applyRotation = () => {
+    const rotationMatrix = getTransformationMatrix({
+      dx: 0,
+      dy: 0,
+      angle,
+      ccw,
+      sx: 1,
+      sy: 1,
+      shx: 0,
+      shy: 0,
+      reflectionEnabled: false,
+    });
+    const newMatrix = multiplyMatrices(appliedMatrix, rotationMatrix);
+    animateTransformation(newMatrix);
+    setTransformationHistory((prev) => [
+      ...prev,
+      `Rotation: ${angle}° ${ccw ? "CCW" : "CW"}`,
+    ]);
+    setAngle(0);
+  };
+
+  const applyScale = () => {
+    const scaleMatrix = getTransformationMatrix({
+      dx: 0,
+      dy: 0,
+      angle: 0,
+      ccw: true,
+      sx,
+      sy,
+      shx: 0,
+      shy: 0,
+      reflectionEnabled: false,
+    });
+    const newMatrix = multiplyMatrices(appliedMatrix, scaleMatrix);
+    animateTransformation(newMatrix);
+    setTransformationHistory((prev) => [
+      ...prev,
+      `Scale: (${sx.toFixed(2)}, ${sy.toFixed(2)})`,
+    ]);
+    setSx(1);
+    setSy(1);
+  };
+
+  const applyShear = () => {
+    const shearMatrix = getTransformationMatrix({
+      dx: 0,
+      dy: 0,
+      angle: 0,
+      ccw: true,
+      sx: 1,
+      sy: 1,
+      shx,
+      shy,
+      reflectionEnabled: false,
+    });
+    const newMatrix = multiplyMatrices(appliedMatrix, shearMatrix);
+    animateTransformation(newMatrix);
+    setTransformationHistory((prev) => [...prev, `Shear: (${shx}°, ${shy}°)`]);
+    setShx(0);
+    setShy(0);
+  };
+
+  const applyReflection = () => {
+    const reflectionMatrix = getTransformationMatrix({
+      dx: 0,
+      dy: 0,
+      angle: 0,
+      ccw: true,
+      sx: 1,
+      sy: 1,
+      shx: 0,
+      shy: 0,
+      reflectionEnabled: true,
+      reflectionM,
+      reflectionT,
+    });
+    const newMatrix = multiplyMatrices(appliedMatrix, reflectionMatrix);
+    animateTransformation(newMatrix);
+    setTransformationHistory((prev) => [
+      ...prev,
+      `Reflection: y = ${reflectionM.toFixed(2)}x + ${reflectionT}`,
+    ]);
+    setReflectionLine({ m: reflectionM, t: reflectionT });
+  };
+
+  const resetTransformations = () => {
+    setAppliedMatrix([
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+    ]);
+    setTransformationHistory([]);
+    setDx(0);
+    setDy(0);
+    setAngle(0);
+    setCcw(true);
+    setSx(1);
+    setSy(1);
+    setShx(0);
+    setShy(0);
+    setReflectionM(1);
+    setReflectionT(0);
+    setReflectionLine(null);
+  };
 
   const getTransformedCorners = () => {
-    return transformCorners(originalCorners, matrix);
+    if (isAnimating && startCorners && targetCorners) {
+      // Interpolate between start and target corners
+      return startCorners.map((start, i) => {
+        const target = targetCorners[i];
+        return {
+          x: start.x + (target.x - start.x) * animationProgress,
+          y: start.y + (target.y - start.y) * animationProgress,
+        };
+      });
+    }
+    return transformCorners(originalCorners, appliedMatrix);
   };
 
   const drawParallelogram = () => {
@@ -63,30 +234,41 @@ export default function TwoDPage() {
       lineColor,
       originalCorners,
       transformedCorners,
-      reflectionEnabled,
-      reflectionM,
-      reflectionT,
+      reflectionEnabled: reflectionLine !== null,
+      reflectionM: reflectionLine?.m || 0,
+      reflectionT: reflectionLine?.t || 0,
     });
   };
 
+  // Animation loop
+  useEffect(() => {
+    if (!isAnimating) return;
+
+    const duration = 500; // 500ms
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function (ease-in-out)
+      const easedProgress = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+      setAnimationProgress(easedProgress);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [isAnimating]);
+
   useEffect(() => {
     drawParallelogram();
-  }, [
-    dx,
-    dy,
-    angle,
-    ccw,
-    sx,
-    sy,
-    shx,
-    shy,
-    reflectionM,
-    reflectionT,
-    reflectionEnabled,
-    canvasSize,
-    lineColor,
-    bgColor,
-  ]);
+  }, [appliedMatrix, canvasSize, lineColor, bgColor, reflectionLine, animationProgress]);
 
   return (
     <div className="min-h-screen flex bg-gray-100">
@@ -111,15 +293,19 @@ export default function TwoDPage() {
         setReflectionM={setReflectionM}
         reflectionT={reflectionT}
         setReflectionT={setReflectionT}
-        reflectionEnabled={reflectionEnabled}
-        setReflectionEnabled={setReflectionEnabled}
         canvasSize={canvasSize}
         setCanvasSize={setCanvasSize}
         lineColor={lineColor}
         setLineColor={setLineColor}
         bgColor={bgColor}
         setBgColor={setBgColor}
-        drawParallelogram={drawParallelogram}
+        applyTranslation={applyTranslation}
+        applyRotation={applyRotation}
+        applyScale={applyScale}
+        applyShear={applyShear}
+        applyReflection={applyReflection}
+        resetTransformations={resetTransformations}
+        transformationHistory={transformationHistory}
       />
 
       {/* Main Content */}
@@ -167,13 +353,13 @@ export default function TwoDPage() {
           {/* Transformation Matrix */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="font-semibold text-lg mb-4">
-              Transformation Matrix
+              Applied Transformation Matrix
             </h3>
             <div className="font-mono text-sm bg-gray-50 p-4 rounded overflow-x-auto">
               <div className="flex items-center justify-center space-x-2">
                 <span className="text-2xl">[</span>
                 <div className="text-center">
-                  {matrix.map((row, i) => (
+                  {appliedMatrix.map((row, i) => (
                     <div key={i} className="flex space-x-4">
                       {row.map((val, j) => (
                         <span key={j} className="inline-block w-20 text-right">
@@ -187,6 +373,25 @@ export default function TwoDPage() {
               </div>
             </div>
           </div>
+
+          {/* Transformation History */}
+          {transformationHistory.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="font-semibold text-lg mb-4">
+                Transformation History
+              </h3>
+              <div className="space-y-2">
+                {transformationHistory.map((transform, i) => (
+                  <div
+                    key={i}
+                    className="bg-gray-50 p-3 rounded font-mono text-sm"
+                  >
+                    {i + 1}. {transform}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Corner Points Grid */}
           <div className="grid md:grid-cols-2 gap-6">

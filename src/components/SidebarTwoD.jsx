@@ -19,15 +19,19 @@ export default function SidebarTwoD({
   setReflectionM,
   reflectionT,
   setReflectionT,
-  reflectionEnabled,
-  setReflectionEnabled,
   canvasSize,
   setCanvasSize,
   lineColor,
   setLineColor,
   bgColor,
   setBgColor,
-  drawParallelogram,
+  applyTranslation,
+  applyRotation,
+  applyScale,
+  applyShear,
+  applyReflection,
+  resetTransformations,
+  transformationHistory,
 }) {
   return (
     <aside
@@ -37,7 +41,7 @@ export default function SidebarTwoD({
       <h2 className="text-lg font-medium mb-4">Transformation Controls</h2>
 
       {/* Translation */}
-      <div className="mb-4">
+      <div className="mb-4 border border-gray-200 rounded p-3">
         <label className="block text-sm font-medium mb-2">Translation</label>
         <div className="space-y-2">
           <div>
@@ -62,11 +66,18 @@ export default function SidebarTwoD({
               className="w-full mt-1"
             />
           </div>
+          <button
+            onClick={applyTranslation}
+            disabled={dx === 0 && dy === 0}
+            className="w-full bg-green-600 text-white py-1.5 px-3 rounded hover:bg-green-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+          >
+            Apply Translation
+          </button>
         </div>
       </div>
 
       {/* Rotation */}
-      <div className="mb-4">
+      <div className="mb-4 border border-gray-200 rounded p-3">
         <label className="block text-sm font-medium mb-2">Rotation</label>
         <div className="space-y-2">
           <div>
@@ -89,11 +100,18 @@ export default function SidebarTwoD({
             />
             <span className="text-sm">Counter-clockwise (CCW)</span>
           </label>
+          <button
+            onClick={applyRotation}
+            disabled={angle === 0}
+            className="w-full bg-green-600 text-white py-1.5 px-3 rounded hover:bg-green-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+          >
+            Apply Rotation
+          </button>
         </div>
       </div>
 
       {/* Scale */}
-      <div className="mb-4">
+      <div className="mb-4 border border-gray-200 rounded p-3">
         <label className="block text-sm font-medium mb-2">Scale</label>
         <div className="space-y-2">
           <div>
@@ -120,11 +138,18 @@ export default function SidebarTwoD({
               className="w-full mt-1"
             />
           </div>
+          <button
+            onClick={applyScale}
+            disabled={sx === 1 && sy === 1}
+            className="w-full bg-green-600 text-white py-1.5 px-3 rounded hover:bg-green-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+          >
+            Apply Scale
+          </button>
         </div>
       </div>
 
       {/* Shear */}
-      <div className="mb-4">
+      <div className="mb-4 border border-gray-200 rounded p-3">
         <label className="block text-sm font-medium mb-2">Shear (Skew)</label>
         <div className="space-y-2">
           <div>
@@ -149,22 +174,20 @@ export default function SidebarTwoD({
               className="w-full mt-1"
             />
           </div>
+          <button
+            onClick={applyShear}
+            disabled={shx === 0 && shy === 0}
+            className="w-full bg-green-600 text-white py-1.5 px-3 rounded hover:bg-green-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+          >
+            Apply Shear
+          </button>
         </div>
       </div>
 
       {/* Reflection */}
-      <div className="mb-4">
+      <div className="mb-4 border border-gray-200 rounded p-3">
         <label className="block text-sm font-medium mb-2">Reflection</label>
         <div className="space-y-2">
-          <label className="flex items-center mb-2">
-            <input
-              type="checkbox"
-              checked={reflectionEnabled}
-              onChange={(e) => setReflectionEnabled(e.target.checked)}
-              className="mr-2"
-            />
-            <span className="text-sm font-medium">Enable Reflection</span>
-          </label>
           <div className="text-sm text-gray-600 mb-2">y = m*x + t</div>
           <div>
             <label className="text-sm">m: {reflectionM.toFixed(2)}</label>
@@ -176,7 +199,6 @@ export default function SidebarTwoD({
               value={reflectionM}
               onChange={(e) => setReflectionM(Number(e.target.value))}
               className="w-full mt-1"
-              disabled={!reflectionEnabled}
             />
           </div>
           <div>
@@ -188,9 +210,14 @@ export default function SidebarTwoD({
               value={reflectionT}
               onChange={(e) => setReflectionT(Number(e.target.value))}
               className="w-full mt-1"
-              disabled={!reflectionEnabled}
             />
           </div>
+          <button
+            onClick={applyReflection}
+            className="w-full bg-green-600 text-white py-1.5 px-3 rounded hover:bg-green-700 transition text-sm"
+          >
+            Apply Reflection
+          </button>
         </div>
       </div>
 
@@ -233,12 +260,13 @@ export default function SidebarTwoD({
         </div>
       </div>
 
-      {/* Redraw Button */}
+      {/* Reset Button */}
       <button
-        onClick={drawParallelogram}
-        className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition"
+        onClick={resetTransformations}
+        disabled={transformationHistory.length === 0}
+        className="w-full bg-red-600 text-white p-2 rounded hover:bg-red-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
-        Redraw Figure
+        Reset All Transformations
       </button>
     </aside>
   );
