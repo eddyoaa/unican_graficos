@@ -69,12 +69,12 @@ export default function TwoDPage() {
   const animateTransformation = (newMatrix) => {
     const currentCorners = transformCorners(originalCorners, appliedMatrix);
     const newCorners = transformCorners(originalCorners, newMatrix);
-    
+
     setStartCorners(currentCorners);
     setTargetCorners(newCorners);
     setIsAnimating(true);
     setAnimationProgress(0);
-    
+
     // Animation will complete after the effect runs
     setTimeout(() => {
       setAppliedMatrix(newMatrix);
@@ -250,11 +250,12 @@ export default function TwoDPage() {
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Easing function (ease-in-out)
-      const easedProgress = progress < 0.5
-        ? 2 * progress * progress
-        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      const easedProgress =
+        progress < 0.5
+          ? 2 * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
       setAnimationProgress(easedProgress);
 
@@ -268,7 +269,14 @@ export default function TwoDPage() {
 
   useEffect(() => {
     drawParallelogram();
-  }, [appliedMatrix, canvasSize, lineColor, bgColor, reflectionLine, animationProgress]);
+  }, [
+    appliedMatrix,
+    canvasSize,
+    lineColor,
+    bgColor,
+    reflectionLine,
+    animationProgress,
+  ]);
 
   return (
     <div className="min-h-screen flex bg-gray-100">
